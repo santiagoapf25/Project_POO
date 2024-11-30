@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medición de Latencias y Ancho de Banda</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center; /* Centrar todo el contenido del body */
+        }
+
+        /* Centrar los títulos h1, h2, h3 */
+        h1, h2, h3 {
+            color: #333;
+            text-align: center; /* Aseguramos que los títulos estén centrados */
+            margin-top: 10px;
+        }
+
+        /* Centrar los párrafos */
+        p {
+            color: #555;
+            text-align: center; /* Centrar los textos en los párrafos */
+            font-size: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            font-size: 20px;
+            font-weight: bold;
+            color: #007BFF;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 75%;
+            border-collapse: collapse;
+            margin: 20px auto;
+            text-align: center; /* Centrar el texto en las celdas de la tabla */
+        }
+
+        th, td {
+            text-align: center;
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #007bff !important;
+        }
+
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: #fff;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-top: 30px;  
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Generador de reportes de Red</h1>
+    <p class="description">
+        Este programa realiza mediciones de latencias y calcula el ancho de banda a partir de las mismas.
+        Las mediciones son graficadas para visualizar tendencias, y los resultados se presentan en una tabla con indicadores de anomalías.
+    </p>
+
+    <button id="iniciar-mediciones">Iniciar Mediciones</button>
+
+    <p id="mensaje-carga" class="loading hidden">Realizando mediciones...</p>
+
+    <div id="contenedor-resultados" class="hidden">
+        <h2>Gráficas</h2>
+        <div id="gráficas">
+            <h3>Latencias</h3>
+            <img id="latencias-img" src="" alt="Gráfica de Latencias">
+            <h3>Ancho de Banda</h3>
+            <img id="ancho-banda-img" src="" alt="Gráfica de Ancho de Banda">
+        </div>
+
+        <h2>Datos en Tabla</h2>
+        <table id="tabla-datos">
+            <thead>
+                <tr>
+                    <th>Medición</th>
+                    <th>Latencia (s)</th>
+                    <th>Ancho de Banda (bps)</th>
+                    <th>Anomalía Latencia</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Al hacer clic en el botón de iniciar mediciones
+            $('#iniciar-mediciones').click(function() {
+                // Mostrar mensaje de carga
+                $('#mensaje-carga').removeClass('hidden');
+                $('#contenedor-resultados').addClass('hidden');
+
+                // Iniciar mediciones en el servidor
+                $.get('/iniciar_mediciones', function(response) {
+                    console.log(response.status);
+                    // Comenzar a verificar resultados
+                    verificarResultados();
+                });
+            });
+
+            // Función para verificar resultados
+            function verificarResultados() {
+                // Llamar periódicamente para obtener resultados
+                let intervalo = setInterval(function() {
+                    $.get('/obtener_resultados', function(response) {
+                        if (response.completadas) {
+                            clearInterval(intervalo); // Detener el intervalo
+                            mostrarResultados(response); // Mostrar resultados
+                        }
+                    });
+                }, 2000); // Verificar cada 2 segundos
+            }
+
+            // Función para mostrar resultados
+            function mostrarResultados(response) {
+                // Ocultar mensaje de carga y mostrar contenedor de resultados
+                $('#mensaje-carga').addClass('hidden');
+                $('#contenedor-resultados').removeClass('hidden');
+
+                // Mostrar imágenes
+                $('#latencias-img').attr('src', 'data:image/png;base64,' + response.latencias_img);
+                $('#ancho-banda-img').attr('src', 'data:image/png;base64,' + response.ancho_banda_img);
+
+                // Mostrar datos en tabla
+                let datos = response.csv_data;
+                let tbody = $('#tabla-datos tbody');
+                tbody.empty(); // Limpiar datos anteriores
+                datos.forEach(function(fila) {
+                    let nuevaFila = `<tr>
+                        <td>${fila["Medición"]}</td>
+                        <td>${fila["Latencia (s)"]}</td>
+                        <td>${fila["Ancho de Banda (bps)"] ? fila["Ancho de Banda (bps)"].toFixed(2) : 'N/A'}</td>
+                        <td>${fila["Anomalía Latencia"]}</td>
+                    </tr>`;
+                    tbody.append(nuevaFila);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
